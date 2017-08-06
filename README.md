@@ -1,92 +1,34 @@
-# CarND-Controls-PID
-Self-Driving Car Engineer Nanodegree Program
 
----
 
-## Dependencies
 
-* cmake >= 3.5
- * All OSes: [click here for installation instructions](https://cmake.org/install/)
-* make >= 4.1
-  * Linux: make is installed by default on most Linux distros
-  * Mac: [install Xcode command line tools to get make](https://developer.apple.com/xcode/features/)
-  * Windows: [Click here for installation instructions](http://gnuwin32.sourceforge.net/packages/make.htm)
-* gcc/g++ >= 5.4
-  * Linux: gcc / g++ is installed by default on most Linux distros
-  * Mac: same deal as make - [install Xcode command line tools]((https://developer.apple.com/xcode/features/)
-  * Windows: recommend using [MinGW](http://www.mingw.org/)
-* [uWebSockets](https://github.com/uWebSockets/uWebSockets)
-  * Run either `./install-mac.sh` or `./install-ubuntu.sh`.
-  * If you install from source, checkout to commit `e94b6e1`, i.e.
-    ```
-    git clone https://github.com/uWebSockets/uWebSockets 
-    cd uWebSockets
-    git checkout e94b6e1
-    ```
-    Some function signatures have changed in v0.14.x. See [this PR](https://github.com/udacity/CarND-MPC-Project/pull/3) for more details.
-* Simulator. You can download these from the [project intro page](https://github.com/udacity/self-driving-car-sim/releases) in the classroom.
+## PID Implementation
+The objective of this project was to complete an implementation of a PID controller to drive a car around a track.
+A PID (Proportional, Integral, Differential) controller is not hard to implement. It is just linearly combines 
 
-There's an experimental patch for windows in this [PR](https://github.com/udacity/CarND-PID-Control-Project/pull/3)
+### Tunning
 
-## Basic Build Instructions
+I tune the controller by trial an error taking into consideration the physics of the problem at hand.
 
-1. Clone this repo.
-2. Make a build directory: `mkdir build && cd build`
-3. Compile: `cmake .. && make`
-4. Run it: `./pid`. 
+I started by defining the proportional gain. This gain multiplies directly the CTE.
 
-## Editor Settings
+By running the simulator in a straight line, I found what limits of CTE that we are dealing with. It seems that it should be lower than more or less 2 and ideally 1. Numbers bellow 0.5 are close enough to the middle of the road.
 
-We've purposefully kept editor configuration files out of this repo in order to
-keep it as simple and environment agnostic as possible. However, we recommend
-using the following settings:
+From older projects with the simulator we know that the car should be able to go around the track without hitting maximum steering angles (in fact, less than 15 degrees is more like it). Thus, I set a proportional gain of 0.2. This makes the steering angle when the CTE is 1 equal to 0.2. That is about 11 degrees which makes for a strong enough correction. In fact, with a CTE of 2 it would cause by itself an steering angle of 23 degrees, which represents a very strong correction.
 
-* indent using spaces
-* set tab width to 2 spaces (keeps the matrices in source code aligned)
+With the P part of the controller set at 0.2, I started playing with values for the differential part. I started increasing it until I could drive around the track comfortably in the middle at 15 mph.
 
-## Code Style
+The car did not seem at this point to display much bias. There seems to be some points in the track with some noise induced in the CTE though. Just in case, I increased the integral gain to get ride of any bias there may be. I leave it quite low not to induce any instabilities.
 
-Please (do your best to) stick to [Google's C++ style guide](https://google.github.io/styleguide/cppguide.html).
+### Increasing Speed
 
-## Project Instructions and Rubric
+I expected the gains to be sensible to speed. After all the same steering angle would not have the same effect at 15 than at 50 mph. To correct for this I tried a linear correction of all gains proportionally to speed. This is a very naive approach as not all parts of the PID controller are going to be affected equally. However, It does work up to a point. That is also to be expected, we could interpret this correction as a linearization of the gains with respect to speed. Therefore, if any gain has a non linear behavior with respect to speed at some point the correction would break down. Besides the fact that the proportionality does not have to be the same for each gain.
 
-Note: regardless of the changes you make, your project must be buildable using
-cmake and make!
+Anyhow, I multiply the error (steering angle) by a factor equal to 10 divided by current speed. To make this work, I had to multiply all gains by 2. Thus, my final gains are:
 
-More information is only accessible by people who are already enrolled in Term 2
-of CarND. If you are enrolled, see [the project page](https://classroom.udacity.com/nanodegrees/nd013/parts/40f38239-66b6-46ec-ae68-03afd8a601c8/modules/f1820894-8322-4bb3-81aa-b26b3c6dcbaf/lessons/e8235395-22dd-4b87-88e0-d108c5e5bbf4/concepts/6a4d8d42-6a04-4aa6-b284-1697c0fd6562)
-for instructions and the project rubric.
+* Proportional: 0.4
+* Integral: 0.002
+* Differential: 4.0
 
-## Hints!
+In conclusion, those are the gains applied at 10 mph. At 20 mph, the gains would be half, at 40 mph one forth, and so on.
 
-* You don't have to follow this directory structure, but if you do, your work
-  will span all of the .cpp files here. Keep an eye out for TODOs.
-
-## Call for IDE Profiles Pull Requests
-
-Help your fellow students!
-
-We decided to create Makefiles with cmake to keep this project as platform
-agnostic as possible. Similarly, we omitted IDE profiles in order to we ensure
-that students don't feel pressured to use one IDE or another.
-
-However! I'd love to help people get up and running with their IDEs of choice.
-If you've created a profile for an IDE that you think other students would
-appreciate, we'd love to have you add the requisite profile files and
-instructions to ide_profiles/. For example if you wanted to add a VS Code
-profile, you'd add:
-
-* /ide_profiles/vscode/.vscode
-* /ide_profiles/vscode/README.md
-
-The README should explain what the profile does, how to take advantage of it,
-and how to install it.
-
-Frankly, I've never been involved in a project with multiple IDE profiles
-before. I believe the best way to handle this would be to keep them out of the
-repo root to avoid clutter. My expectation is that most profiles will include
-instructions to copy files to a new location to get picked up by the IDE, but
-that's just a guess.
-
-One last note here: regardless of the IDE used, every submitted project must
-still be compilable with cmake and make./
+With this setting the car would go around the track (although a bit unsafely) at 50 mph. It goes around fine at 30 mph.
